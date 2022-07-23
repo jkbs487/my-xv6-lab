@@ -44,6 +44,8 @@ testmem() {
   uint64 n = countfree();
   
   sinfo(&info);
+  printf("user freemem:%d\n", info.freemem);  
+  printf("user nproc:%d\n", info.nproc);  
 
   if (info.freemem!= n) {
     printf("FAIL: free mem %d (bytes) instead of %d\n", info.freemem, n);
@@ -56,7 +58,7 @@ testmem() {
   }
 
   sinfo(&info);
-    
+
   if (info.freemem != n-PGSIZE) {
     printf("FAIL: free mem %d (bytes) instead of %d\n", n-PGSIZE, info.freemem);
     exit(1);
