@@ -432,3 +432,51 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+// Recursively print page-table pages.
+void
+vmprint_walk(pagetable_t pagetable, int level)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V) {
+      for (int j = 0; j <= level; j++) {
+	if (j == level-1) printf("..");
+	else printf(".. ");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+    }
+    if (pte & PTE_A) printf(" Access ");
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte);
+      vmprint_walk((pagetable_t)child, level+1);
+    }
+  }
+}
+
+void
+vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n", pagetable);
+  vmprint_walk(pagetable, 0);
+}
+
+uint64
+pgaccess(pagetable_t pagetable, uint64 base, int len, uint64 mask)
+{
+  uint64 va0;
+  unsigned int abits = 0;
+  for (uint64 i = 0; i < len; i++) {
+    va0 = PGROUNDDOWN(base);
+    pte_t *pte = walk(pagetable, va0, 0);
+    if (*pte & PTE_A) {
+      *pte &= ~PTE_A;
+      abits |= 1 << i;
+    }
+    base = va0 + PGSIZE;
+  }
+  copyout(pagetable, mask, (char*)&abits, sizeof(abits));
+  return 0;
+}
